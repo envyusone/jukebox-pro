@@ -1,18 +1,26 @@
 import { getUserById } from "#db/queries/users";
 import { verifyToken } from "#utils/jwt";
 
-/** Attaches the user to the request if a valid token is provided */
 export default async function getUserFromToken(req, res, next) {
-  const authorization = req.get("authorization");
-  if (!authorization || !authorization.startsWith("Bearer ")) return next();
+  const authHeader = req.get("authorization");
+  
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return next();
+  }
 
-  const token = authorization.split(" ")[1];
+  const token = authHeader.split(" ")[1];
+  
   try {
-    const { id } = verifyToken(token);
-    const user = await getUserById(id);
-    req.user = user;
+    const payload = verifyToken(token);
+    
+    if (payload && payload.id) {
+      const user = await getUserById(payload.id);
+      if (user) {
+        req.user = user; 
+      }
+    }
     next();
-  } catch {
-    res.status(401).send("Invalid token.");
+  } catch (error) {
+    next();
   }
 }
